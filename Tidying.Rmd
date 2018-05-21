@@ -1,0 +1,78 @@
+---
+title: "Tidying"
+author: "Lauren Zatkos"
+date: "May 21, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(dplyr)
+library(tidyr)
+```
+Read in data from the [KNB] (https://knb.ecoinformatics.org/knb/d1/mn/v2/object/df35b.302.1) 
+```{r}
+catch_df <- catch_df <- read.csv(url("https://knb.ecoinformatics.org/knb/d1/mn/v2/object/df35b.302.1", method = "libcurl"),
+                    stringsAsFactors = FALSE)
+head(catch_df)
+```
+```{r}
+unique(catch_df$notesRegCode)
+```
+^is a way to check if there is anything in the notes column. And there is, but we won't be analyzing this data (should 
+probably go in the metadata for this dataset)
+
+In the below chunk, we selected columns we wanted, specified which columns to name what, and renamed the catch_thousands column. 
+```{r}
+catch_df <- catch_df %>%
+  select(Region, Year, Chinook, Sockeye, Coho, Pink, Chum) %>%
+  gather(key = Species, value = Catch, -Region, -Year) %>% 
+  rename(catch_thousands = Catch)
+head(catch_df)
+```  
+select specifically picks out columns, while subset picks out rows. 
+
+Question: the table is in wide format, how to we transform it into long format?
+?gather
+gather turns a dataframe into two columns, you need to specify what you want in the columns/what you don't want (with -)
+
+?spread
+
+If we want to change the catch_thousands value into the actual number of fish. But we got an error because the catch 1000s is currently recognized as character. Because someone accidently entered a letter instead of a number for a chinook count.So we must correct this. 
+```{r}
+catch_df %>%
+  mutate(catch = catch_thousands * 1000)
+
+test<-as.integer(catch_df$catch_thousands)
+which(is.na(test) == TRUE)
+catch_df[401,]
+``` 
+So now that we have ID'ed that, this is how to fix it: if else says "if catch thousands = I, make it 1, if not, keep it as whatever value is in catch_thousands"
+
+Found type-o in original data, corrected it, converted catch_thousands column to numeric, and created new column with units # of fish. 
+```{r}
+catch_df<-catch_df %>%
+  mutate(catch_thousands = ifelse(catch_thousands=="I", 1, catch_thousands)) %>%
+  mutate(catch_thousands= as.integer(catch_thousands)) %>%
+  mutate(catch = catch_thousands * 1000)
+
+```
+
+# Analysis 
+
+```{r}
+catch_df %>%
+  group_by(Species, Year) %>%
+  summarize(mean_catch= mean(catch), num_obs = n())
+```
+
+```{r}
+catch_df %>%
+  filter(Species == "Chinook") %>% 
+  group_by(Region) %>% 
+  summarise(mean_catch = mean(catch)) %>% #calculate mean catch
+  arrange(desc(mean_catch)) #sort in descending order by catch
+```
