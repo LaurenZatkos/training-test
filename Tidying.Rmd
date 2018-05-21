@@ -76,3 +76,23 @@ catch_df %>%
   summarise(mean_catch = mean(catch)) %>% #calculate mean catch
   arrange(desc(mean_catch)) #sort in descending order by catch
 ```
+So right now this is great, but we don't know what region initials stand for. But we can bring these in from the metadata on the KNB website. We want to JOIN this info. 
+# Joins 
+
+```{r}
+region_defs <- read.csv(url("https://knb.ecoinformatics.org/knb/d1/mn/v2/object/df35b.303.1", method = "libcurl"),
+                        stringsAsFactors = FALSE)
+```
+But there's lots of columns we don't need. Select for the ones we want. Should still include the column we have, so we can match them. 
+```{r}
+region_defs<-region_defs %>% 
+  select(code,mgmtArea)
+
+head(region_defs)
+```
+Don't want to overwrite OG catch_df, in case there's a problem, we'll want to be able to look at OG table. To make new table and join catch_df with region_defs, need to specify what we are joining them by (b/c titles of columns are different)
+```{r}
+catch_joined <- left_join(catch_df, region_defs, by = c("Region" = "code"))
+
+head(catch_joined)
+```
